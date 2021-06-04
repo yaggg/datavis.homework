@@ -46,8 +46,8 @@ const colorScale = d3.scaleOrdinal().range(['#DD4949', '#39CDA1', '#FD710C', '#A
 const radiusScale = d3.scaleSqrt().range([10, 30]);
 
 loadData().then(data => {
-
     colorScale.domain(d3.set(data.map(d => d.region)).values());
+    barChart.on('click', handleBarClick);
 
     d3.select('#range').on('mousemove', function () {
         year = d3.select(this).property('value');
@@ -88,7 +88,7 @@ loadData().then(data => {
 
         barHandler(barChart.selectAll(".bar")
             .data(meanData)
-            .enter().append("rect"), xScaler, yScaler)
+            .enter().append("rect").on('click', handleBarClick), xScaler, yScaler)
 
         barHandler(barChart.selectAll(".bar")
             .data(meanData)
@@ -101,7 +101,17 @@ loadData().then(data => {
             .attr("y", d => yScaler(d.value))
             .attr("width", xScaler.bandwidth())
             .attr("height", d => height - margin - yScaler(d.value))
-            .attr('fill', d => colorScale(d.key));
+            .attr('fill', d => colorScale(d.key))
+    }
+
+    function handleBarClick(dClicked, i) {
+        barChart.selectAll('.bar')
+            .transition()
+            .style('opacity', d => d.key === dClicked.key ? 1.0 : 0.5);
+
+        scatterPlot.selectAll('circle').transition()
+            .style('opacity', d => d.region === dClicked.key ? 0.7 : 0);
+        d3.event.stopPropagation();
     }
 
     function updateScatterPlot() {

@@ -79,55 +79,51 @@ loadData().then(data => {
     function updateBar() {
         let meanData = d3.nest()
             .key(d => d['region'])
-            .rollup(v => d3.mean(v, d => parseFloat(d[param][year])))
+            .rollup(v => d3.mean(v, d => parseFloat(d[param][year]) || 0))
             .entries(data);
-        let xScaler = xBar.domain(meanData.map(d => d.key))
-        let yScaler = yBar.domain(d3.extent([0, d3.max(meanData.map(d => d.value))]))
+        let xScaler = xBar.domain(['asia', 'europe', 'africa', 'americas'])
+        let yScaler = yBar.domain([0, d3.max(meanData.map(d => d.value))])
         xBarAxis.call(d3.axisBottom(xScaler))
         yBarAxis.call(d3.axisLeft(yScaler))
 
-        barChart.selectAll(".bar")
+        barHandler(barChart.selectAll(".bar")
             .data(meanData)
-            .enter().append("rect")
-            .attr("class", "bar")
-            .attr("x", d => xScaler(d.key))
-            .attr("y", d => height - margin - yScaler(d.value))
-            .attr("width", xScaler.bandwidth())
-            .attr("height", d => yScaler(d.value))
-            .attr('fill', d => colorScale(d.key));
+            .enter().append("rect"), xScaler, yScaler)
 
-        barChart.selectAll(".bar")
+        barHandler(barChart.selectAll(".bar")
             .data(meanData)
-            .transition()
-            .attr("class", "bar")
+            .transition(), xScaler, yScaler)
+    }
+
+    function barHandler(selection, xScaler, yScaler) {
+        selection.attr("class", "bar")
             .attr("x", d => xScaler(d.key))
-            .attr("y", d => height - margin - yScaler(d.value))
+            .attr("y", d => yScaler(d.value))
             .attr("width", xScaler.bandwidth())
-            .attr("height", d => yScaler(d.value))
+            .attr("height", d => height - margin - yScaler(d.value))
             .attr('fill', d => colorScale(d.key));
     }
 
     function updateScatterPlot() {
-        let rScaler = radiusScale.domain(d3.extent(data.map(d => parseFloat(d[rParam][year]))))
-        let xScaler = x.domain(d3.extent(data.map(d => parseFloat(d[xParam][year]))))
-        let yScaler = y.domain(d3.extent(data.map(d => parseFloat(d[yParam][year]))))
+        let rScaler = radiusScale.domain(d3.extent(data.map(d => parseFloat(d[rParam][year]) || 0)))
+        let xScaler = x.domain(d3.extent(data.map(d => parseFloat(d[xParam][year]) || 0)))
+        let yScaler = y.domain(d3.extent(data.map(d => parseFloat(d[yParam][year]) || 0)))
         xAxis.call(d3.axisBottom(xScaler))
         yAxis.call(d3.axisLeft(yScaler))
 
-        scatterPlot.selectAll('circle')
+        scatterHandler(scatterPlot.selectAll('circle')
             .data(data)
-            .enter().append('circle')
-            .attr('r', d => rScaler(parseFloat(d[rParam][year])))
-            .attr('cx', d => xScaler(parseFloat(d[xParam][year])))
-            .attr('cy', d => yScaler(parseFloat(d[yParam][year])))
-            .attr('fill', d => colorScale(d['region']))
+            .enter().append('circle'), xScaler, yScaler, rScaler)
 
-        scatterPlot.selectAll('circle')
+        scatterHandler(scatterPlot.selectAll('circle')
             .data(data)
-            .transition()
-            .attr('r', d => rScaler(parseFloat(d[rParam][year])))
-            .attr('cx', d => xScaler(parseFloat(d[xParam][year])))
-            .attr('cy', d => yScaler(parseFloat(d[yParam][year])))
+            .transition(), xScaler, yScaler, rScaler)
+    }
+
+    function scatterHandler(selection, xScaler, yScaler, rScaler) {
+        selection.attr('r', d => rScaler(parseFloat(d[rParam][year]) || 0))
+            .attr('cx', d => xScaler(parseFloat(d[xParam][year]) || 0))
+            .attr('cy', d => yScaler(parseFloat(d[yParam][year]) || 0))
             .attr('fill', d => colorScale(d['region']))
     }
 

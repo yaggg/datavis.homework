@@ -73,6 +73,7 @@ h1{
     position: absolute;
     top: 20px;
     left: 120px;
+    pointer-events: none;
 }
 .line-chart-container{
     position: relative;

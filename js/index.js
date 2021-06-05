@@ -23,15 +23,17 @@ let yParam = 'child-mortality';
 let rParam = 'gdp';
 let year = '2000';
 let param = 'child-mortality';
-let lineParam = 'gdp';
-let highlighted = '';
-let selected;
+let lineParam = 'child-mortality';
+let selected = 'Russia';
 
 const x = d3.scaleLinear().range([margin * 2, width - margin]);
 const y = d3.scaleLinear().range([height - margin, margin]);
 
 const xBar = d3.scaleBand().range([margin * 2, barWidth - margin]).padding(0.1);
 const yBar = d3.scaleLinear().range([height - margin, margin])
+
+const xLine = d3.scaleTime().range([margin * 2, width - margin]);
+const yLine = d3.scaleLinear().range([height - margin, margin]);
 
 const xAxis = scatterPlot.append('g').attr('transform', `translate(0, ${height - margin})`);
 const yAxis = scatterPlot.append('g').attr('transform', `translate(${margin * 2}, 0)`);
@@ -49,7 +51,7 @@ loadData().then(data => {
     colorScale.domain(d3.set(data.map(d => d.region)).values());
     barChart.on('click', handleBarClick);
 
-    d3.select('#range').on('mousemove', function () {
+    d3.select('#range').on('input', function () {
         year = d3.select(this).property('value');
         yearLable.html(year);
         updateScatterPlot();
@@ -76,23 +78,48 @@ loadData().then(data => {
         updateBar();
     });
 
+    d3.select('#p').on('change', function () {
+        lineParam = d3.select(this).property('value');
+        updateLinePlot();
+    });
+
+    function updateLinePlot() {
+        const index = data.findIndex(item => item.country === selected);
+        const item = data[index][lineParam];
+        let entries = Object.entries(item).slice(0, -5)
+        let xScaler = xLine.domain(d3.extent(entries.map(entry => new Date(entry[0]))));
+        let yScaler = yLine.domain(d3.extent(entries.map(entry => parseFloat(entry[1]) || 0)));
+        lineChart.selectAll('path').remove();
+        countryName.html(selected);
+        xLineAxis.call(d3.axisBottom(xScaler));
+        yLineAxis.call(d3.axisLeft(yScaler));
+        lineChart.append('path')
+            .datum(entries)
+            .attr("fill", "none")
+            .attr("stroke", "steelblue")
+            .attr("stroke-width", 1.5)
+            .attr("d", d3.line()
+                .x(d => xScaler(new Date(d[0])))
+                .y(d => yScaler(parseFloat(d[1]) || 0)))
+    }
+
     function updateBar() {
         let meanData = d3.nest()
             .key(d => d['region'])
             .rollup(v => d3.mean(v, d => parseFloat(d[param][year]) || 0))
             .entries(data);
-        let xScaler = xBar.domain(['asia', 'europe', 'africa', 'americas'])
-        let yScaler = yBar.domain([0, d3.max(meanData.map(d => d.value))])
-        xBarAxis.call(d3.axisBottom(xScaler))
-        yBarAxis.call(d3.axisLeft(yScaler))
+        let xScaler = xBar.domain(['asia', 'europe', 'africa', 'americas']);
+        let yScaler = yBar.domain([0, d3.max(meanData.map(d => d.value))]);
+        xBarAxis.call(d3.axisBottom(xScaler));
+        yBarAxis.call(d3.axisLeft(yScaler));
 
         barHandler(barChart.selectAll(".bar")
             .data(meanData)
-            .enter().append("rect").on('click', handleBarClick), xScaler, yScaler)
+            .enter().append("rect").on('click', handleBarClick), xScaler, yScaler);
 
         barHandler(barChart.selectAll(".bar")
             .data(meanData)
-            .transition(), xScaler, yScaler)
+            .transition(), xScaler, yScaler);
     }
 
     function barHandler(selection, xScaler, yScaler) {
@@ -101,7 +128,7 @@ loadData().then(data => {
             .attr("y", d => yScaler(d.value))
             .attr("width", xScaler.bandwidth())
             .attr("height", d => height - margin - yScaler(d.value))
-            .attr('fill', d => colorScale(d.key))
+            .attr('fill', d => colorScale(d.key));
     }
 
     function handleBarClick(dClicked, i) {
@@ -115,30 +142,41 @@ loadData().then(data => {
     }
 
     function updateScatterPlot() {
-        let rScaler = radiusScale.domain(d3.extent(data.map(d => parseFloat(d[rParam][year]) || 0)))
-        let xScaler = x.domain(d3.extent(data.map(d => parseFloat(d[xParam][year]) || 0)))
-        let yScaler = y.domain(d3.extent(data.map(d => parseFloat(d[yParam][year]) || 0)))
-        xAxis.call(d3.axisBottom(xScaler))
-        yAxis.call(d3.axisLeft(yScaler))
+        let rScaler = radiusScale.domain(d3.extent(data.map(d => parseFloat(d[rParam][year]) || 0)));
+        let xScaler = x.domain(d3.extent(data.map(d => parseFloat(d[xParam][year]) || 0)));
+        let yScaler = y.domain(d3.extent(data.map(d => parseFloat(d[yParam][year]) || 0)));
+        xAxis.call(d3.axisBottom(xScaler));
+        yAxis.call(d3.axisLeft(yScaler));
 
         scatterHandler(scatterPlot.selectAll('circle')
             .data(data)
-            .enter().append('circle'), xScaler, yScaler, rScaler)
+            .enter().append('circle').on('click', handleScatterClick), xScaler, yScaler, rScaler);
 
         scatterHandler(scatterPlot.selectAll('circle')
             .data(data)
-            .transition(), xScaler, yScaler, rScaler)
+            .transition(), xScaler, yScaler, rScaler);
     }
 
     function scatterHandler(selection, xScaler, yScaler, rScaler) {
         selection.attr('r', d => rScaler(parseFloat(d[rParam][year]) || 0))
             .attr('cx', d => xScaler(parseFloat(d[xParam][year]) || 0))
             .attr('cy', d => yScaler(parseFloat(d[yParam][year]) || 0))
-            .attr('fill', d => colorScale(d['region']))
+            .attr('fill', d => colorScale(d['region']));
+    }
+
+    function handleScatterClick(dClicked, i) {
+        selected = dClicked.country
+        scatterPlot.selectAll('circle')
+            .transition()
+            .attr('stroke-width', d => d.country === dClicked.country ? 2 : 1);
+        d3.select(this).raise();
+        d3.event.stopPropagation();
+        updateLinePlot();
     }
 
     updateBar();
     updateScatterPlot();
+    updateLinePlot();
 });
 
 
